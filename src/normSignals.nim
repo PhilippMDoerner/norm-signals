@@ -1,5 +1,4 @@
 import std/[tables, sets, hashes, db_sqlite, typetraits, logging, strformat]
-import norm/model 
 
 var LOGGER = newConsoleLogger(lvlInfo)
 
@@ -7,9 +6,11 @@ type SignalType* = enum
   ## Denotes possible trigger points for signals, meaning the system will look
   ## for to execute appropriate signal procs after a create/delete/update action 
   ## or before a delete action.
+  stPreCreate
   stPostCreate
   stPreDelete
   stPostDelete
+  stPreUpdate
   stPostUpdate
 
 
@@ -28,7 +29,7 @@ proc hasSignal(signalType: SignalType, tableKind: string): bool =
   result = hasTableKind(tableKind) and STORE.procs[tableKind].hasKey(signalType)
 
 
-proc connect*[T: Model](signalType: SignalType, model: typedesc[T], signalProc: pointer) =
+proc connect*[T: object](signalType: SignalType, model: typedesc[T], signalProc: pointer) =
   ## Associates the given proc with the given model and signaltype. The signalProc is triggered
   ## whenever a model of the given type is manipulated either through an update, delete, or create
   ## action. Which of theses actions trigger the given signalproc is determined by the signalType.
@@ -48,7 +49,7 @@ proc connect*[T: Model](signalType: SignalType, model: typedesc[T], signalProc: 
   LOGGER.log(lvlInfo, fmt "SIGNALSYSTEM: Connected {signalType} signal to model {name(T)} - There is/are now {myLen} {signalType} signal(s)")
 
 
-proc triggerSignal*[T: Model](signalType: SignalType, connection: DbConn, modelInstance: T) =
+proc triggerSignal*[T: object](signalType: SignalType, connection: DbConn, modelInstance: T) =
   ## Triggers all stored signal procs for the given modelInstance and the given signalType
   let tableKind: string = name(modelInstance.type)
   if not hasSignal(signalType, tableKind): return
