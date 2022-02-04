@@ -4,8 +4,7 @@ var LOGGER = newConsoleLogger(lvlInfo)
 
 type SignalType* = enum
   ## Denotes possible trigger points for signals, meaning the system will look
-  ## for to execute appropriate signal procs after a create/delete/update action 
-  ## or before a delete action.
+  ## for to execute appropriate signal procs after or before a create/delete/update action 
   stPreCreate
   stPostCreate
   stPreDelete
@@ -17,10 +16,10 @@ type SignalType* = enum
 type SignalProcStore = object
   ## Stores pointers to all Signal procs. A Signal proc is a proc that is 
   ## executed before or after a create/update/delete action happens. They 
-  ## are associated with a specific object that inherits from Model and 
+  ## are associated with a specific object type and 
   ## when they should trigger (determined by SignalType). SignalProcs 
   ## always have the signature: 
-  ## proc(connection: DbConn, modelInstance: <YOUR MODEL TYPE>).
+  ## proc(connection: DbConn, modelInstance: <YOUR OBJECT TYPE>).
   procs: Table[string, Table[SignalType, HashSet[pointer]]]
 
 var STORE {.global.}: SignalProcStore
@@ -30,11 +29,8 @@ proc hasSignal(signalType: SignalType, tableKind: string): bool =
 
 
 proc connect*[T: object](signalType: SignalType, model: typedesc[T], signalProc: pointer) =
-  ## Associates the given proc with the given model and signaltype. The signalProc is triggered
-  ## whenever a model of the given type is manipulated either through an update, delete, or create
-  ## action. Which of theses actions trigger the given signalproc is determined by the signalType.
-  ## The SignalType also denotes whether the given signalProc is executed before or after the data
-  ## manipulation takes place.
+  ## Associates the given proc with the given object type and signaltype. The signalProc is triggered
+  ## whenever `triggerSignal` is called with the corresponding signalType and object type.
   const tableKind: string = name(T)
 
   if not hasTableKind(tableKind):
